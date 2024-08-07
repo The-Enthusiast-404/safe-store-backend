@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/rs/cors"
 )
 
 func (app *application) routes() http.Handler {
@@ -21,5 +22,19 @@ func (app *application) routes() http.Handler {
 	// register the healthcheck handler function with the router
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthCheckHandler)
 
-	return router
+	router.HandlerFunc(http.MethodPost, "/v1/upload", app.uploadFileHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/download/:filename", app.downloadFileHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/files", app.listFilesHandler) // New endpoint
+	router.HandlerFunc(http.MethodDelete, "/v1/delete/:filename", app.deleteFileHandler)
+
+	// Create a new CORS handler
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"*"}, // Add your frontend origin here
+		AllowedMethods:   []string{"GET", "POST", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+		// Enable Debugging for testing, consider disabling in production
+	})
+
+	return c.Handler(router)
 }
