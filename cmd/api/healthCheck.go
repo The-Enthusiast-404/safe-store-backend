@@ -11,7 +11,7 @@ func (app *application) healthCheckHandler(w http.ResponseWriter, r *http.Reques
 		"status": "available",
 		"system_info": map[string]string{
 			"environment": app.config.env,
-			"version":     version,
+			"version":     "1.0.0",
 		},
 	}
 
