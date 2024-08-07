@@ -25,7 +25,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/v1/upload", app.uploadFileHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/download/:filename", app.downloadFileHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/files", app.listFilesHandler) // New endpoint
-	router.HandlerFunc(http.MethodDelete, "/v1/delete/:filename", app.deleteFileHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/delete", app.deleteFilesHandler)
 
 	// Create a new CORS handler
 	c := cors.New(cors.Options{

@@ -145,3 +145,53 @@ func (app *application) deleteFileHandler(w http.ResponseWriter, r *http.Request
 
 	app.writeJSON(w, http.StatusOK, envelope{"message": "File deleted successfully"}, nil)
 }
+
+func (app *application) deleteFilesHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Filenames []string `json:"filenames"`
+	}
+
+	err := app.readJSON(w, r, &req)
+	if err != nil {
+		app.errorResponse(w, r, http.StatusBadRequest, "Invalid JSON payload")
+		return
+	}
+
+	if len(req.Filenames) == 0 {
+		app.errorResponse(w, r, http.StatusBadRequest, "No files specified for deletion")
+		return
+	}
+
+	var objects []*s3.ObjectIdentifier
+	for _, filename := range req.Filenames {
+		objects = append(objects, &s3.ObjectIdentifier{Key: aws.String(filename)})
+	}
+
+	deleteInput := &s3.DeleteObjectsInput{
+		Bucket: aws.String(app.config.doSpacesBucket),
+		Delete: &s3.Delete{
+			Objects: objects,
+			Quiet:   aws.Bool(false),
+		},
+	}
+
+	result, err := app.s3.DeleteObjects(deleteInput)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Check for any errors during deletion
+	if len(result.Errors) > 0 {
+		errorMessages := make([]string, len(result.Errors))
+		for i, err := range result.Errors {
+			errorMessages[i] = fmt.Sprintf("Failed to delete %s: %s", *err.Key, *err.Message)
+		}
+		app.errorResponse(w, r, http.StatusInternalServerError, errorMessages)
+		return
+	}
+
+	deletedCount := len(result.Deleted)
+	message := fmt.Sprintf("Successfully deleted %d file(s)", deletedCount)
+	app.writeJSON(w, http.StatusOK, envelope{"message": message}, nil)
+}
