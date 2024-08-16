@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"dev.theenthusiast.safe-store/internal/config"
+	"dev.theenthusiast.safe-store/internal/middleware"
 	"dev.theenthusiast.safe-store/internal/storage"
 	"dev.theenthusiast.safe-store/pkg/logger"
 	"github.com/julienschmidt/httprouter"
@@ -24,12 +25,17 @@ func NewServer(cfg *config.Config, log logger.Logger) (*Server, error) {
 		return nil, fmt.Errorf("failed to create R2 client: %w", err)
 	}
 
-	return &Server{
+	s := &Server{
 		router:   httprouter.New(),
 		logger:   log,
 		config:   cfg,
 		r2Client: r2Client,
-	}, nil
+	}
+
+	// Apply CORS middleware to all routes
+	s.router.GlobalOPTIONS = middleware.HandleCORS()
+
+	return s, nil
 }
 
 func (s *Server) Start() error {

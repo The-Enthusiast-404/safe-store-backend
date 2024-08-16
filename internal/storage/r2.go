@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
@@ -51,7 +52,7 @@ func (r *R2Client) UploadFile(ctx context.Context, key string, body io.Reader) e
 	return err
 }
 
-func (r *R2Client) DownloadFile(ctx context.Context, key string) (io.ReadCloser, error) {
+func (r *R2Client) DownloadFile(ctx context.Context, key string) (*s3.GetObjectOutput, error) {
 	result, err := r.client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String(r.bucket),
 		Key:    aws.String(key),
@@ -59,5 +60,34 @@ func (r *R2Client) DownloadFile(ctx context.Context, key string) (io.ReadCloser,
 	if err != nil {
 		return nil, err
 	}
-	return result.Body, nil
+	return result, nil
+}
+
+type File struct {
+	Name         string    `json:"name"`
+	Size         int64     `json:"size"`
+	LastModified time.Time `json:"lastModified"`
+}
+
+func (r *R2Client) ListFiles(ctx context.Context) ([]File, error) {
+	result, err := r.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+		Bucket: aws.String(r.bucket),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list objects: %w", err)
+	}
+
+	var files []File
+	for _, obj := range result.Contents {
+		file := File{
+			Name: aws.ToString(obj.Key),
+			Size: aws.ToInt64(obj.Size),
+		}
+		if obj.LastModified != nil {
+			file.LastModified = *obj.LastModified
+		}
+		files = append(files, file)
+	}
+
+	return files, nil
 }
