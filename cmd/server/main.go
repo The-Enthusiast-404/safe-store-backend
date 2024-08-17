@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -9,16 +10,25 @@ import (
 	"dev.theenthusiast.safe-store/internal/api"
 	"dev.theenthusiast.safe-store/internal/config"
 	"dev.theenthusiast.safe-store/pkg/logger"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load()
+		if err != nil {
+			log.Fatal("Error loading .env file")
+		}
+
 	log := logger.New()
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatal("failed to load configurations", "error", err)
 	}
 
-	server := api.NewServer(cfg, log)
+	server, err := api.NewServer(cfg, log)
+	if err != nil {
+		log.Fatal("failed to create server", "error", err)
+	}
 	server.SetupRoutes()
 
 	go func() {
